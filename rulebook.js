@@ -11,12 +11,17 @@ class SearchBox extends React.Component {
 
 class RuleDisplay extends React.Component {
   render(){
-    return e('p', {id: "rules"}, this.props.rules[this.props.currentChapter]);
+    return e(
+      'div',
+      {id:"rules"},
+      this.props.rules[this.props.currentChapter]
+        .filter((rule)=>this.props.filter=="" || rule.includes(this.props.filter))
+        .map((rule, index) => e('p', {key: "rules-"+index+"-"+rule}, rule))
+    );
   }
 }
 class Chapter extends React.Component {
   render(){
-    console.log(this.props);
     return e(
       'li',
       {id: this.props.chapter},
@@ -30,20 +35,59 @@ class Chapter extends React.Component {
 }
 
 class ChapterCategory extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      open: false,
+    };
+  }
 
+  render(){
+    let header = e(
+        'li',
+        {id:this.props.heading, key:this.props.heading},
+        e(
+          'button',
+          {onClick: ()=>this.setState({open: !this.state.open})},
+          this.props.heading
+        ))
+    if(!this.state.open){
+      return header
+    }
+    else return [header, e("ul", {key:"ul-"+this.props.heading}, this.props.chapters.map(
+      (chapter)=>e(Chapter, {
+        key: chapter,
+        chapter: chapter,
+        onClick:()=>this.props.onClick(chapter)
+      })))];
+  }
 }
 
 class TableOfContents extends React.Component {
 
+
+
   render(){
-    let tocChapters = this.props.tocChapters.map(
+    /*let tocChapters = this.props.tocChapters.map(
       (chapter) => e(Chapter, {
         key: chapter,
         chapter: chapter,
         onClick:()=>this.props.onClick(chapter)
       })
-    );
-    return e('ul', {id: "toc-ul"}, tocChapters);
+    );*/
+    let tocChapters = Object.keys(this.props.tocHeadings).map(
+      (header) => e(ChapterCategory, {
+        key: header,
+        heading: header,
+        chapters: this.props.tocHeadings[header],
+        onClick: this.props.onClick,
+      }));
+    let tocExtras = this.props.tocExtras.map((chapter)=>e(Chapter, {
+        key: chapter,
+        chapter: chapter,
+        onClick:()=>this.props.onClick(chapter)
+      }));
+    return e('ul', {id: "toc-ul"}, tocChapters.concat(tocExtras));
   }
 }
 
@@ -52,7 +96,15 @@ class Rulebook extends React.Component {
     super(props);
     this.state = {
       loaded: false,
-      rawText: 'Not loaded.',
+      rawText: "Not loaded",
+      tocChapters: [],
+      tocHeadings: {},
+      tocNumbers: {},
+      tocExtras: [],
+      intro: "Not Loaded.",
+      rules: {},
+      filter: "",
+      currentChapter: "",
     };
   }
 
@@ -142,7 +194,13 @@ class Rulebook extends React.Component {
       // js splice edits the original array so move the index back the same amount
       i = start;
       // now let's collect the rules into an object
-      let chapters = {}
+      // and while we're here, let's collect the chapter name and number mappings
+      // and header relations
+      let chapters = {};
+      let tocHeadings = {};
+      let tocNumbers = {};
+      let headingNro = 0;
+      let heading = "0";
       for(let j = 0; j<toc_lines.length;j++){
         let ch_start = i;
         // take lines until the title for the next chapter is seen
@@ -150,12 +208,30 @@ class Rulebook extends React.Component {
           i += 1;
         }
         let ch_end = i;
+        let ch_num = toc_lines[j].split('.')[0];
+        if(ch_num < 100){
+          headingNro = Number(ch_num);
+          heading = toc_lines[j]
+          tocNumbers[headingNro] = heading;
+          tocHeadings[heading] = [];
+        } else if (ch_num>=100*headingNro && ch_num<100*(headingNro+1)){
+          tocNumbers[Number(ch_num)] = toc_lines[j];
+          tocHeadings[heading].push(toc_lines[j]);
+        }
         // add them into the object for easy access
         chapters[toc_lines[j]] = lines.splice(ch_start, ch_end-ch_start);
         // reset the i again
         i = ch_start;
       }
-      return {introduction: intro, tocChapters: toc_lines, rules:chapters};
+      let extras = toc_lines.filter((line)=>!(line.split('.')[0]<1e9));
+      return {
+        introduction: intro,
+        tocChapters: toc_lines,
+        tocHeadings: tocHeadings,
+        tocNumbers: tocNumbers,
+        tocExtras: extras,
+        rules:chapters
+      };
     }
 
     //loadRules(ruleUrl); //this doesn't seem to get defined until after the method is run
@@ -167,8 +243,12 @@ class Rulebook extends React.Component {
         loaded: true,
         rawText: data.contents,
         tocChapters: ruleObj.tocChapters,
+        tocHeadings: ruleObj.tocHeadings,
+        tocNumbers: ruleObj.tocNumbers,
+        tocExtras: ruleObj.tocExtras,
         intro: ruleObj.introduction,
         rules: ruleObj.rules,
+        filter: this.state.filter,
         currentChapter: ruleObj.tocChapters[0],
       });
     }).catch((err)=>console.log('fetch error', err));
@@ -184,17 +264,29 @@ class Rulebook extends React.Component {
       { id: "" },
       e(TableOfContents, {
         tocChapters: this.state.tocChapters,
+        tocHeadings: this.state.tocHeadings,
+        tocNumbers: this.state.tocNumbers,
+        tocExtras: this.state.tocExtras,
         onClick: (chapter) =>
           this.setState({
             loaded: this.state.loaded,
             rawText: this.state.rawText,
             tocChapters: this.state.tocChapters,
+            tocHeadings: this.state.tocHeadings,
+            tocNumbers: this.state.tocNumbers,
+            tocExtras: this.state.tocExtras,
             intro: this.state.intro,
             rules: this.state.rules,
+            filter: this.state.filter,
             currentChapter: chapter,
           })
       }),
-      e(RuleDisplay, {currentChapter: this.state.currentChapter, rules: this.state.rules})
+      e(RuleDisplay, {
+        currentChapter: this.state.currentChapter,
+        filter: this.state.filter,
+        tocNumbers: this.state.tocNumbers,
+        rules: this.state.rules,
+      })
     );
   }
 }
