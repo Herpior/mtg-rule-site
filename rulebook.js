@@ -11,11 +11,22 @@ class SearchBox extends React.Component {
 
 class RuleDisplay extends React.Component {
   render(){
-    return e('p', {id: "rules"}, "some text")
+    return e('p', {id: "rules"}, this.props.rules[this.props.currentChapter]);
   }
 }
 class Chapter extends React.Component {
-
+  render(){
+    console.log(this.props);
+    return e(
+      'li',
+      {id: this.props.chapter},
+      e(
+        'button',
+        {onClick: this.props.onClick},
+        this.props.chapter
+      )
+    );
+  }
 }
 
 class ChapterCategory extends React.Component {
@@ -25,7 +36,14 @@ class ChapterCategory extends React.Component {
 class TableOfContents extends React.Component {
 
   render(){
-    return e('ul', {id: "toc-ul"})
+    let tocChapters = this.props.tocChapters.map(
+      (chapter) => e(Chapter, {
+        key: chapter,
+        chapter: chapter,
+        onClick:()=>this.props.onClick(chapter)
+      })
+    );
+    return e('ul', {id: "toc-ul"}, tocChapters);
   }
 }
 
@@ -55,8 +73,9 @@ class Rulebook extends React.Component {
     while(i<lines.length && lines[i] != "Contents"){
       i += 1;
     }
-    // also skip the Contents line
-    i += 1;
+    let intro = lines.splice(0, i);
+    // reset index and skip the Contents line
+    i = 1;
     // go through the items in the toc until the first item is seen again
     let start = i;
     i += 1;
@@ -82,7 +101,7 @@ class Rulebook extends React.Component {
       // reset the i again
       i = ch_start;
     }
-    return {contents: toc_lines, rules:chapters};
+    return {introduction: intro, contents: toc_lines, rules:chapters};
   }
 
   loadRules(url) {
@@ -108,8 +127,9 @@ class Rulebook extends React.Component {
       while(i<lines.length && lines[i] != "Contents"){
         i += 1;
       }
-      // also skip the Contents line
-      i += 1;
+      let intro = lines.splice(0, i);
+      // reset index and skip the Contents line
+      i = 1;
       // go through the items in the toc until the first item is seen again
       let start = i;
       i += 1;
@@ -135,18 +155,21 @@ class Rulebook extends React.Component {
         // reset the i again
         i = ch_start;
       }
-      return {contents: toc_lines, rules:chapters};
+      return {introduction: intro, tocChapters: toc_lines, rules:chapters};
     }
 
     //loadRules(ruleUrl); //this doesn't seem to get defined until after the method is run
     fetch(ruleUrl, {mode: 'cors'}).then((response)=>{
       if (response.ok) return response.json();
     }).then(data =>{
-      console.log(data);
-      console.log(parseRules(data.contents));
+      let ruleObj = parseRules(data.contents);
       this.setState({
         loaded: true,
         rawText: data.contents,
+        tocChapters: ruleObj.tocChapters,
+        intro: ruleObj.introduction,
+        rules: ruleObj.rules,
+        currentChapter: ruleObj.tocChapters[0],
       });
     }).catch((err)=>console.log('fetch error', err));
   }
@@ -159,8 +182,19 @@ class Rulebook extends React.Component {
     return e(
       'div',
       { id: "" },
-      e(TableOfContents, this.state),
-      e(RuleDisplay, this.state)
+      e(TableOfContents, {
+        tocChapters: this.state.tocChapters,
+        onClick: (chapter) =>
+          this.setState({
+            loaded: this.state.loaded,
+            rawText: this.state.rawText,
+            tocChapters: this.state.tocChapters,
+            intro: this.state.intro,
+            rules: this.state.rules,
+            currentChapter: chapter,
+          })
+      }),
+      e(RuleDisplay, {currentChapter: this.state.currentChapter, rules: this.state.rules})
     );
   }
 }
