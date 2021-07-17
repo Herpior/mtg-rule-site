@@ -261,7 +261,7 @@ class Rulebook extends React.Component {
 
     return e(
       'div',
-      { id: "" },
+      { id: "rule_flex" },
       e(TableOfContents, {
         tocChapters: this.state.tocChapters,
         tocHeadings: this.state.tocHeadings,
