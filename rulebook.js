@@ -26,7 +26,7 @@ class Rule extends React.Component {
     for(let i = 1; i<parts.length; i++){
       let numstr = parts[i].slice(0,3);
       if(isNaN(numstr)){
-        last = res[res.length];
+        let last = res[res.length];
         res[res.length] = last + delim + parts[i];
       }
       else {
