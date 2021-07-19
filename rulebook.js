@@ -18,6 +18,31 @@ class SearchBox extends React.Component {
   }
 }
 
+class Rule extends React.Component {
+  renderRule(){
+    const delim = "rule "
+    let parts = this.props.rule.split(delim);
+    let res = [parts[0]]
+    for(let i = 1; i<parts.length; i++){
+      let numstr = parts[i].slice(0,3);
+      let number = Number(numstr);
+      let chapter = this.props.tocNumbers[number];
+      let link = e("a", {onClick: () => this.props.changeChapter(chapter), key:numstr+"-"+1}, numstr)
+      res.push(delim)
+      res.push(link);
+      res.push(parts[i].slice(3,parts[i].length));
+    }
+    return res;
+  }
+  render(){
+    return e(
+      'p',
+      {},
+      this.renderRule()
+    );
+  }
+}
+
 class RuleDisplay extends React.Component {
   render(){
     return e(
@@ -25,7 +50,12 @@ class RuleDisplay extends React.Component {
       {id:"rules"},
       this.props.rules[this.props.currentChapter]
         .filter((rule)=>this.props.filter=="" || rule.includes(this.props.filter))
-        .map((rule, index) => e('p', {key: "rules-"+index+"-"+rule}, rule))
+        .map((rule, index) => e(Rule, {
+          key: "rules-"+index+"-"+rule,
+          rule:rule,
+          tocNumbers:this.props.tocNumbers,
+          changeChapter: this.props.changeChapter
+        }))
     );
   }
 }
@@ -112,6 +142,7 @@ class Rulebook extends React.Component {
       tocExtras: [],
       intro: "Not Loaded.",
       rules: {},
+      glossary: {},
       filter: "",
       currentChapter: "",
     };
@@ -179,14 +210,30 @@ class Rulebook extends React.Component {
       i = ch_start;
     }
     let extras = toc_lines.filter((line)=>!(line.split('.')[0]<1e9));
+    chapters["Introduction"] = intro;
+    let glossary = {};
+    try {
+      glossary = this.parseGlossary(chapters["Glossary"]);
+    }
+    catch (err) {
+      console.log("Failed to read glossary.");
+    }
     return {
-      introduction: intro,
       tocChapters: toc_lines,
       tocHeadings: tocHeadings,
       tocNumbers: tocNumbers,
       tocExtras: extras,
-      rules:chapters
+      rules: chapters,
+      glossary: glossary,
     };
+  }
+
+  parseGlossary(lines){
+    let glossary = {};
+    for(let i = 1; i*2<lines.length; i+=2){
+      glossary[lines[i-1]] = lines[i];
+    }
+    return glossary;
   }
 
   loadRules(url) {
@@ -204,9 +251,13 @@ class Rulebook extends React.Component {
         intro: ruleObj.introduction,
         rules: ruleObj.rules,
         filter: this.state.filter,
-        currentChapter: ruleObj.tocChapters[0],
+        glossary: ruleObj.glossary,
+        currentChapter: "Introduction",
       });
-    }).catch((err)=>console.log('fetch error', err));
+    }).catch((err) => {
+      this.editState("rawText", "Failed to load file.");
+      console.log('fetch error', err);
+    });
   }
 
   editState(key, value){
@@ -239,6 +290,8 @@ class Rulebook extends React.Component {
         filter: this.state.filter,
         tocNumbers: this.state.tocNumbers,
         rules: this.state.rules,
+        glossary: this.state.glossary,
+        changeChapter: (chapter) => this.editState('currentChapter', chapter)
       }),
       e(SearchBox, {
         onEdit: (content) => this.editState('filter', content)
