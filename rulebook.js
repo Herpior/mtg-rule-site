@@ -6,7 +6,16 @@ const ruleUrl = "https://api.allorigins.win/get?url=https://media.wizards.com/20
 
 
 class SearchBox extends React.Component {
-
+  render(){
+    return e(
+      'div',
+      {id:"search"},
+      e(
+        'input',
+        {type:'text', id:'filter-text', name:'filter-text', onChange:()=>this.props.onEdit(event.target.value)}
+      )
+    );
+  }
 }
 
 class RuleDisplay extends React.Component {
@@ -286,6 +295,21 @@ class Rulebook extends React.Component {
         filter: this.state.filter,
         tocNumbers: this.state.tocNumbers,
         rules: this.state.rules,
+      }),
+      e(SearchBox, {
+        onEdit: (content) =>
+          this.setState({
+            loaded: this.state.loaded,
+            rawText: this.state.rawText,
+            tocChapters: this.state.tocChapters,
+            tocHeadings: this.state.tocHeadings,
+            tocNumbers: this.state.tocNumbers,
+            tocExtras: this.state.tocExtras,
+            intro: this.state.intro,
+            rules: this.state.rules,
+            filter: content,
+            currentChapter: this.state.currentChapter,
+          })
       })
     );
   }
