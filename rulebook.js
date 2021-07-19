@@ -25,12 +25,18 @@ class Rule extends React.Component {
     let res = [parts[0]]
     for(let i = 1; i<parts.length; i++){
       let numstr = parts[i].slice(0,3);
-      let number = Number(numstr);
-      let chapter = this.props.tocNumbers[number];
-      let link = e("a", {onClick: () => this.props.changeChapter(chapter), key:numstr+"-"+1}, numstr)
-      res.push(delim)
-      res.push(link);
-      res.push(parts[i].slice(3,parts[i].length));
+      if(isNaN(numstr)){
+        last = res[res.length];
+        res[res.length] = last + delim + parts[i];
+      }
+      else {
+        let number = Number(numstr);
+        let chapter = this.props.tocNumbers[number];
+        let link = e("a", {onClick: () => this.props.changeChapter(chapter), key:numstr+"-"+1}, numstr)
+        res.push(delim)
+        res.push(link);
+        res.push(parts[i].slice(3,parts[i].length));
+      }
     }
     return res;
   }
@@ -103,17 +109,7 @@ class ChapterCategory extends React.Component {
 }
 
 class TableOfContents extends React.Component {
-
-
-
   render(){
-    /*let tocChapters = this.props.tocChapters.map(
-      (chapter) => e(Chapter, {
-        key: chapter,
-        chapter: chapter,
-        onClick:()=>this.props.onClick(chapter)
-      })
-    );*/
     let tocChapters = Object.keys(this.props.tocHeadings).map(
       (header) => e(ChapterCategory, {
         key: header,
@@ -126,7 +122,7 @@ class TableOfContents extends React.Component {
         chapter: chapter,
         onClick:()=>this.props.onClick(chapter)
       }));
-    return e('ul', {id: "toc-ul"}, tocChapters.concat(tocExtras));
+    return e('ul', {id: "toc-ul"}, tocChapters);//.concat(tocExtras));
   }
 }
 
@@ -277,14 +273,21 @@ class Rulebook extends React.Component {
 
     return e(
       'div',
-      { id: "rule_flex" },
-      e(TableOfContents, {
-        tocChapters: this.state.tocChapters,
-        tocHeadings: this.state.tocHeadings,
-        tocNumbers: this.state.tocNumbers,
-        tocExtras: this.state.tocExtras,
-        onClick: (chapter) => this.editState('currentChapter', chapter)
-      }),
+      { id: "rule_columns" },
+      e(
+        'div',
+        {id:'left-side'},
+        e(SearchBox, {
+          onEdit: (content) => this.editState('filter', content)
+        }),
+        e(TableOfContents, {
+          tocChapters: this.state.tocChapters,
+          tocHeadings: this.state.tocHeadings,
+          tocNumbers: this.state.tocNumbers,
+          tocExtras: this.state.tocExtras,
+          onClick: (chapter) => this.editState('currentChapter', chapter)
+        })
+      ),
       e(RuleDisplay, {
         currentChapter: this.state.currentChapter,
         filter: this.state.filter,
@@ -292,9 +295,6 @@ class Rulebook extends React.Component {
         rules: this.state.rules,
         glossary: this.state.glossary,
         changeChapter: (chapter) => this.editState('currentChapter', chapter)
-      }),
-      e(SearchBox, {
-        onEdit: (content) => this.editState('filter', content)
       })
     );
   }
