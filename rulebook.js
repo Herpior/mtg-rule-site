@@ -149,7 +149,13 @@ class Rulebook extends React.Component {
     // js splice edits the original array so move the index back the same amount
     i = start;
     // now let's collect the rules into an object
-    let chapters = {}
+    // and while we're here, let's collect the chapter name and number mappings
+    // and header relations
+    let chapters = {};
+    let tocHeadings = {};
+    let tocNumbers = {};
+    let headingNro = 0;
+    let heading = "0";
     for(let j = 0; j<toc_lines.length;j++){
       let ch_start = i;
       // take lines until the title for the next chapter is seen
@@ -157,97 +163,37 @@ class Rulebook extends React.Component {
         i += 1;
       }
       let ch_end = i;
+      let ch_num = toc_lines[j].split('.')[0];
+      if(ch_num < 100){
+        headingNro = Number(ch_num);
+        heading = toc_lines[j]
+        tocNumbers[headingNro] = heading;
+        tocHeadings[heading] = [];
+      } else if (ch_num>=100*headingNro && ch_num<100*(headingNro+1)){
+        tocNumbers[Number(ch_num)] = toc_lines[j];
+        tocHeadings[heading].push(toc_lines[j]);
+      }
       // add them into the object for easy access
       chapters[toc_lines[j]] = lines.splice(ch_start, ch_end-ch_start);
       // reset the i again
       i = ch_start;
     }
-    return {introduction: intro, contents: toc_lines, rules:chapters};
+    let extras = toc_lines.filter((line)=>!(line.split('.')[0]<1e9));
+    return {
+      introduction: intro,
+      tocChapters: toc_lines,
+      tocHeadings: tocHeadings,
+      tocNumbers: tocNumbers,
+      tocExtras: extras,
+      rules:chapters
+    };
   }
 
   loadRules(url) {
-    fetch(url).then((response)=>{
-      if (response.ok) return response.json();
-    }).then(data =>{
-      console.log(data);
-      this.setState({
-        loaded: true,
-        rawText: data.contents,
-      });
-    }).catch((err)=>console.log('fetch error', err));
-  }
-
-  componentDidMount() {
-    let parseRules = (rawText) => {
-      // let's get the lines with text in them
-      const lines = rawText.split("\r\n")
-                    .map(line => line.trim())
-                    .filter(line => line.length>=1);
-      // skip the introduction
-      let i = 0;
-      while(i<lines.length && lines[i] != "Contents"){
-        i += 1;
-      }
-      let intro = lines.splice(0, i);
-      // reset index and skip the Contents line
-      i = 1;
-      // go through the items in the toc until the first item is seen again
-      let start = i;
-      i += 1;
-      while(i<lines.length && lines[i] != lines[start]){
-        i += 1;
-      }
-      let end = i;
-      // split the toc into their own array
-      let toc_lines = lines.splice(start, end-start);
-      // js splice edits the original array so move the index back the same amount
-      i = start;
-      // now let's collect the rules into an object
-      // and while we're here, let's collect the chapter name and number mappings
-      // and header relations
-      let chapters = {};
-      let tocHeadings = {};
-      let tocNumbers = {};
-      let headingNro = 0;
-      let heading = "0";
-      for(let j = 0; j<toc_lines.length;j++){
-        let ch_start = i;
-        // take lines until the title for the next chapter is seen
-        while (i<lines.length && lines[i] != toc_lines[(j+1)%toc_lines.length]){ //using mod to avoid iob exception in the credits
-          i += 1;
-        }
-        let ch_end = i;
-        let ch_num = toc_lines[j].split('.')[0];
-        if(ch_num < 100){
-          headingNro = Number(ch_num);
-          heading = toc_lines[j]
-          tocNumbers[headingNro] = heading;
-          tocHeadings[heading] = [];
-        } else if (ch_num>=100*headingNro && ch_num<100*(headingNro+1)){
-          tocNumbers[Number(ch_num)] = toc_lines[j];
-          tocHeadings[heading].push(toc_lines[j]);
-        }
-        // add them into the object for easy access
-        chapters[toc_lines[j]] = lines.splice(ch_start, ch_end-ch_start);
-        // reset the i again
-        i = ch_start;
-      }
-      let extras = toc_lines.filter((line)=>!(line.split('.')[0]<1e9));
-      return {
-        introduction: intro,
-        tocChapters: toc_lines,
-        tocHeadings: tocHeadings,
-        tocNumbers: tocNumbers,
-        tocExtras: extras,
-        rules:chapters
-      };
-    }
-
-    //loadRules(ruleUrl); //this doesn't seem to get defined until after the method is run
     fetch(ruleUrl, {mode: 'cors'}).then((response)=>{
       if (response.ok) return response.json();
     }).then(data =>{
-      let ruleObj = parseRules(data.contents);
+      let ruleObj = this.parseRules(data.contents);
       this.setState({
         loaded: true,
         rawText: data.contents,
@@ -263,6 +209,16 @@ class Rulebook extends React.Component {
     }).catch((err)=>console.log('fetch error', err));
   }
 
+  editState(key, value){
+    let clone = Object.assign({}, this.state);
+    clone[key] = value;
+    this.setState(clone);
+  }
+
+  componentDidMount() {
+    this.loadRules(ruleUrl);
+  }
+
   render() {
     if (!this.state.loaded) {
       return this.state.rawText;
@@ -276,19 +232,7 @@ class Rulebook extends React.Component {
         tocHeadings: this.state.tocHeadings,
         tocNumbers: this.state.tocNumbers,
         tocExtras: this.state.tocExtras,
-        onClick: (chapter) =>
-          this.setState({
-            loaded: this.state.loaded,
-            rawText: this.state.rawText,
-            tocChapters: this.state.tocChapters,
-            tocHeadings: this.state.tocHeadings,
-            tocNumbers: this.state.tocNumbers,
-            tocExtras: this.state.tocExtras,
-            intro: this.state.intro,
-            rules: this.state.rules,
-            filter: this.state.filter,
-            currentChapter: chapter,
-          })
+        onClick: (chapter) => this.editState('currentChapter', chapter)
       }),
       e(RuleDisplay, {
         currentChapter: this.state.currentChapter,
@@ -297,19 +241,7 @@ class Rulebook extends React.Component {
         rules: this.state.rules,
       }),
       e(SearchBox, {
-        onEdit: (content) =>
-          this.setState({
-            loaded: this.state.loaded,
-            rawText: this.state.rawText,
-            tocChapters: this.state.tocChapters,
-            tocHeadings: this.state.tocHeadings,
-            tocNumbers: this.state.tocNumbers,
-            tocExtras: this.state.tocExtras,
-            intro: this.state.intro,
-            rules: this.state.rules,
-            filter: content,
-            currentChapter: this.state.currentChapter,
-          })
+        onEdit: (content) => this.editState('filter', content)
       })
     );
   }
