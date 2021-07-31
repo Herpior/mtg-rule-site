@@ -21,22 +21,25 @@ class SearchBox extends React.Component {
 
 class Rule extends React.Component {
   renderRule(){
-    const delim = "rule "
-    let parts = this.props.rule.split(delim);
+    // either find a rule number, i.e. a 3 digit number surrounded by non-numbers
+    // or find text that only has strings of digits 1-2 long or longer than 4 digits
+    let parts = this.props.rule.match(/(([^\d]|^)\d{3}[^\d])|((\d{0,2}([^\d]|\d{4,})+)+((?!.\d).|$))/g);
     let res = [parts[0]]
     for(let i = 1; i<parts.length; i++){
-      let numstr = parts[i].slice(0,3);
-      if(isNaN(numstr)){
+      let numstr = parts[i].slice(1,4);
+      if(isNaN(numstr)||parts[i].length!=5){
         let last = res[res.length-1];
-        res[res.length-1] = last + delim + parts[i];
+        res[res.length-1] = last + parts[i];
       }
       else {
         let number = Number(numstr);
         let chapter = this.props.tocNumbers[number];
         let link = e("a", {onClick: () => this.props.changeChapter(chapter), key:this.props.rule+"-"+numstr+"-"+i}, numstr)
-        res.push(delim)
+
+        let last = res[res.length-1];
+        res[res.length-1] = last + parts[i][0];
         res.push(link);
-        res.push(parts[i].slice(3,parts[i].length));
+        res.push(parts[i].slice(4,parts[i].length));
       }
     }
     return res;
@@ -56,7 +59,7 @@ class RuleDisplay extends React.Component {
       'div',
       {id:"rules"},
       this.props.rules[this.props.currentChapter]
-        .filter((rule)=>this.props.filter=="" || rule.includes(this.props.filter))
+        .filter((rule)=>this.props.filter=="" || rule.toLowerCase().includes(this.props.filter.toLowerCase()))
         .map((rule, index) => e(Rule, {
           key: "rules-"+index+"-"+rule,
           rule:rule,
