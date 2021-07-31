@@ -1,4 +1,13 @@
 div#rule_columns {
   display: grid;
   grid-template-columns: 1fr 3fr;
+  grid-column-gap: 1em;
+}
+a {
+  color: blue;
+  cursor:pointer;
+}
+ul {
+  list-style-type: none;
+  padding-left: 1em;
 }
