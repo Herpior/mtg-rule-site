@@ -10,6 +10,7 @@ class SearchBox extends React.Component {
     return e(
       'div',
       {id:"search"},
+      'filter: ',
       e(
         'input',
         {type:'text', id:'filter-text', name:'filter-text', onChange:()=>this.props.onEdit(event.target.value)}
@@ -26,13 +27,13 @@ class Rule extends React.Component {
     for(let i = 1; i<parts.length; i++){
       let numstr = parts[i].slice(0,3);
       if(isNaN(numstr)){
-        let last = res[res.length];
-        res[res.length] = last + delim + parts[i];
+        let last = res[res.length-1];
+        res[res.length-1] = last + delim + parts[i];
       }
       else {
         let number = Number(numstr);
         let chapter = this.props.tocNumbers[number];
-        let link = e("a", {onClick: () => this.props.changeChapter(chapter), key:numstr+"-"+1}, numstr)
+        let link = e("a", {onClick: () => this.props.changeChapter(chapter), key:this.props.rule+"-"+numstr+"-"+i}, numstr)
         res.push(delim)
         res.push(link);
         res.push(parts[i].slice(3,parts[i].length));
@@ -71,7 +72,7 @@ class Chapter extends React.Component {
       'li',
       {id: this.props.chapter},
       e(
-        'button',
+        'a',
         {onClick: this.props.onClick},
         this.props.chapter
       )
@@ -92,7 +93,7 @@ class ChapterCategory extends React.Component {
         'li',
         {id:this.props.heading, key:this.props.heading},
         e(
-          'button',
+          'a',
           {onClick: ()=>this.setState({open: !this.state.open})},
           this.props.heading
         ))
