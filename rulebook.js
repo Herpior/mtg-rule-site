@@ -24,7 +24,7 @@ class Rule extends React.Component {
     // either find a rule number, i.e. a 3 digit number surrounded by non-numbers
     // or find text that only has strings of digits 1-2 long or longer than 4 digits
     let parts = this.props.rule.match(/(([^\d]|^)\d{3}[^\d])|((\d{0,2}([^\d]|\d{4,})+)+((?!.\d).|$))/g);
-    let res = [parts[0]]
+    let res = [parts[0]];
     for(let i = 1; i<parts.length; i++){
       let numstr = parts[i].slice(1,4);
       if(isNaN(numstr)||parts[i].length!=5){
@@ -114,6 +114,7 @@ class ChapterCategory extends React.Component {
 
 class TableOfContents extends React.Component {
   render(){
+    let tocTitle = [e("li", {"id":"toc-header", "key":"toc-header"}, "Table of Contents")];
     let tocChapters = Object.keys(this.props.tocHeadings).map(
       (header) => e(ChapterCategory, {
         key: header,
@@ -126,7 +127,7 @@ class TableOfContents extends React.Component {
         chapter: chapter,
         onClick:()=>this.props.onClick(chapter)
       }));
-    return e('ul', {id: "toc-ul"}, tocChapters);//.concat(tocExtras));
+    return e('ul', {id: "toc-ul"}, tocTitle.concat(tocChapters));//.concat(tocExtras));
   }
 }
 
